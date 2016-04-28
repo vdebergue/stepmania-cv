@@ -14,28 +14,6 @@ object Config {
   val parser = new scopt.OptionParser[Config]("stepmania-cv") {
     head("stepmania-cv")
 
-    opt[File]('i', "image")
-      .text("image to analyze")
-      .valueName("<image>")
-      .optional()
-      .action { (x, c) => c.copy(image = Some(x)) }
-      .validate{ (f: File) =>
-        if (f.isDirectory) failure(s"$f can't be a directory")
-        else if (!f.canRead) failure(s"Can not read file $f")
-        else success
-      }
-
-    opt[File]('v', "video")
-      .text("video to analyze")
-      .valueName("<video>")
-      .optional()
-      .action { (x, c) => c.copy(video = Some(x)) }
-      .validate{ (f: File) =>
-        if (f.isDirectory) failure(s"$f can't be a directory")
-        else if (!f.canRead) failure(s"Can not read file $f")
-        else success
-      }
-
     help("help")
 
     cmd("live")
@@ -59,6 +37,22 @@ object Config {
             .action{ (x, c) => c.copy(captureDevice = Some(x)) }
       }
 
+    cmd("image")
+      .text("analyze an image")
+      .children {
+        arg[File]("<image>")
+          .required()
+          .action { (x, c) => c.copy(image = Some(x)) }
+      }
+
+    cmd("video")
+      .text("analyze a video")
+      .children {
+        arg[File]("<video>")
+          .required()
+          .action { (x, c) => c.copy(video = Some(x)) }
+      }
+
     checkConfig { c =>
       if (c.isLive) success
       else if (c.image.isDefined && c.video.isEmpty) success
@@ -73,4 +67,5 @@ object Config {
       case None => sys.exit(1)
     }
   }
+
 }

@@ -34,6 +34,15 @@ object Screen {
     println(s"Grabber gamma ${g.getGamma()}")
     g
   }
+
+  def fromVideo(file: java.io.File, fps: Int = 60): Source[Frame, _] = {
+    val grabber = new FFmpegFrameGrabber(file)
+    grabber.start()
+    Source.tick(0.second, 1.second / fps, "")
+      .map { _ =>
+        grabber.grab()
+      }
+  }
 }
 
 case class Dimensions(width: Int, height: Int)

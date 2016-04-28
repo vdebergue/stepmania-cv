@@ -3,7 +3,7 @@ package stepmaniacv
 import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import org.bytedeco.javacv.{CanvasFrame, Frame}
 import org.bytedeco.javacpp.opencv_core.{CvBox2D, IplImage, Mat}
 
@@ -13,13 +13,16 @@ object Main {
 
     if (config.isLive) {
       startLive(config)
+    } else if (config.image.isDefined) {
+      analyzeImage(config.image.get)
+    } else if (config.video.isDefined) {
+      analyzeVideo(config.video.get)
     }
   }
 
-  def startLive(config: Config) {
+  def analyzeSource(source: Source[Frame, _]): Unit = {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
-    val source = Screen.sourceTick(config.captureDevice.get, config.captureFormat)
 
     // out
     val canvas = new CanvasFrame("screen", 1)
@@ -39,7 +42,7 @@ object Main {
     val graph = source
       // .map(logFrame)
       .via(RateMonitor.asFlow[Frame](ratePrint, "grab"))
-      .map(displayImage)
+      // .map(displayImage)
       .via(RateMonitor.asFlow[Frame](ratePrint, "display"))
       .map(MediaConversion.toIplImage)
       // .map(logMat)
@@ -59,6 +62,20 @@ object Main {
       .to(Sink.ignore)
 
     graph.run()
+  }
+
+  def startLive(config: Config) {
+    val source = Screen.sourceTick(config.captureDevice.get, config.captureFormat)
+    analyzeSource(source)
+  }
+
+  def analyzeImage(image: java.io.File) {
+    println("TODO")
+  }
+
+  def analyzeVideo(video: java.io.File) {
+    val source = Screen.fromVideo(video, fps = 24)
+    analyzeSource(source)
   }
 
   case class WithGrey(orig: IplImage, grey: IplImage)
