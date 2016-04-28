@@ -9,12 +9,17 @@ import org.bytedeco.javacpp.opencv_core.{CvBox2D, IplImage, Mat}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    println("Hello")
+    val config = Config.parseArgs(args)
 
+    if (config.isLive) {
+      startLive(config)
+    }
+  }
+
+  def startLive(config: Config) {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
-
-    val source = Screen.sourceTick("1")
+    val source = Screen.sourceTick(config.captureDevice.get, config.captureFormat)
 
     // out
     val canvas = new CanvasFrame("screen", 1)
@@ -54,7 +59,6 @@ object Main {
       .to(Sink.ignore)
 
     graph.run()
-
   }
 
   case class WithGrey(orig: IplImage, grey: IplImage)

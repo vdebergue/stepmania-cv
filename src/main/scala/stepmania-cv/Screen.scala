@@ -15,8 +15,8 @@ import FrameGrabber.ImageMode
 
 object Screen {
 
-  def sourceTick(deviceId: String): Source[Frame, _] = {
-    val grabber = buildGrabber(deviceId)
+  def sourceTick(deviceId: String, format: String): Source[Frame, _] = {
+    val grabber = buildGrabber(deviceId, format)
     Source.tick(0.second, 1.second / 60, "")
       .map{ _ =>
         // println(s"[${Thread.currentThread().getName}] grab image")
@@ -24,9 +24,9 @@ object Screen {
       }
   }
 
-  def buildGrabber(deviceId: String, dim: Dimensions = Dimensions.sd): FrameGrabber = {
+  def buildGrabber(deviceId: String, format: String, dim: Dimensions = Dimensions.sd): FrameGrabber = {
     val g = FFmpegFrameGrabber.createDefault(deviceId)
-    g.setFormat("avfoundation")
+    g.setFormat(format)
     g.setImageWidth(dim.width)
     g.setImageHeight(dim.height)
     g.setFrameRate(100)
