@@ -55,15 +55,15 @@ object Main {
 
     val graph = source
       // .map(logFrame)
-      .via(RateMonitor.asFlow[Frame](ratePrint, "grab"))
+      // .via(RateMonitor.asFlow[Frame](ratePrint, "grab"))
       // .map(displayImage)
-      .via(RateMonitor.asFlow[Frame](ratePrint, "display"))
+      // .via(RateMonitor.asFlow[Frame](ratePrint, "display"))
       .map(MediaConversion.toIplImage)
       .map(detectArrows)
       .map { t => drawArrowBoxes(arrows, t); t }
       // .map(logMat)
       // .map(logImage)
-      .via(RateMonitor.asFlow[IplImage](ratePrint, "converted"))
+      // .via(RateMonitor.asFlow[IplImage](ratePrint, "converted"))
       .map(i => WithGrey(i, MediaConversion.toGrayScale(i)))
       //      .map(logImage)
       .sliding(2, 1)
