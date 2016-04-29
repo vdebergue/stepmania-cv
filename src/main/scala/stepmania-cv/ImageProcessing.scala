@@ -28,12 +28,31 @@ object ImageProcessing {
     buffer
   }
 
+  def fromEnv(name: String, default: Int): Int = {
+    sys.env.get(name).map(_.toInt).getOrElse(default)
+  }
+  def drawRectangles(img: IplImage, arrow: Arrow): Unit = {
+    cvRectangle(
+      img,
+      new CvPoint(arrow.x, arrow.y),
+      new CvPoint(arrow.x2, arrow.y2),
+      new CvScalar(0, 255, 0, 1),  // color (BGRA)
+      5, // thickness (filled rectangle if < 0)
+      8, // lineType (8-connected line)
+      0  // shift
+    )
+  }
+
   val RedColor = AbstractCvScalar.RED
-  def drawBoxes(img: IplImage, boxes: Seq[CvBox2D]): IplImage = {
-    val clonedImg = img.clone()
+  def drawBoxes(img: IplImage, boxes: Seq[CvBox2D]): Unit = {
     for (box <- boxes) {
-      cvEllipseBox(clonedImg, box, RedColor, 3, 8, 0)
+      cvEllipseBox(img, box, RedColor, 3, 8, 0)
     }
-    clonedImg
+  }
+
+  def contains(box: CvBox2D, arrow: Arrow): Boolean = {
+    val x = box.center.x
+    val y = box.center.y
+    x > arrow.x && x < arrow.x2 && y > arrow.y && y < arrow.y2
   }
 }

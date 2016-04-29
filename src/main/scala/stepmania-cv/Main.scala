@@ -14,13 +14,13 @@ object Main {
     if (config.isLive) {
       startLive(config)
     } else if (config.image.isDefined) {
-      analyzeImage(config.image.get)
+      analyzeImage(config.image.get, config)
     } else if (config.video.isDefined) {
-      analyzeVideo(config.video.get)
+      analyzeVideo(config.video.get, config)
     }
   }
 
-  def analyzeSource(source: Source[Frame, _]): Unit = {
+  def analyzeSource(source: Source[Frame, _], config: Config): Unit = {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
@@ -45,6 +45,7 @@ object Main {
       // .map(displayImage)
       .via(RateMonitor.asFlow[Frame](ratePrint, "display"))
       .map(MediaConversion.toIplImage)
+      .map { t => drawArrowBoxes(config, t); t }
       // .map(logMat)
       // .map(logImage)
       .via(RateMonitor.asFlow[IplImage](ratePrint, "converted"))
@@ -53,29 +54,50 @@ object Main {
       .sliding(2, 1)
       .map { imgs =>
         val boxes = ImageProcessing.detectMotion(imgs(1).grey, imgs(0).grey)
-        imgs(1) -> boxes.filter(b => b.size.width > 0 && b.size.height > 0)
+        imgs(1).orig -> boxes.filter(b => b.size.width > 0 && b.size.height > 0)
       }
       // .map{ t => logBoxes(t._2); t }
-      .map(t => ImageProcessing.drawBoxes(t._1.orig, t._2))
+      .map { case (img, boxes) =>
+        (img, boxes.filter(isBoxcontainedInArrow(config)))
+      }
+      .map { case (img, boxes) => ImageProcessing.drawBoxes(img, boxes); img }
       .map(MediaConversion.toFrame)
-      .map(displayImage)
+      .map(displayImage(_))
       .to(Sink.ignore)
 
     graph.run()
   }
 
+  def drawArrowBoxes(config: Config, img: IplImage): Unit = {
+    config.liveArrows.foreach { arrows =>
+      ImageProcessing.drawRectangles(img, arrows.arrow1)
+      ImageProcessing.drawRectangles(img, arrows.arrow2)
+      ImageProcessing.drawRectangles(img, arrows.arrow3)
+      ImageProcessing.drawRectangles(img, arrows.arrow4)
+    }
+  }
+
+  def isBoxcontainedInArrow(config: Config)(box: CvBox2D): Boolean = {
+    config.liveArrows.exists { arrows =>
+      ImageProcessing.contains(box, arrows.arrow1) ||
+      ImageProcessing.contains(box, arrows.arrow2) ||
+      ImageProcessing.contains(box, arrows.arrow3) ||
+      ImageProcessing.contains(box, arrows.arrow4)
+    }
+  }
+
   def startLive(config: Config) {
     val source = Screen.sourceTick(config.captureDevice.get, config.captureFormat)
-    analyzeSource(source)
+    analyzeSource(source, config)
   }
 
-  def analyzeImage(image: java.io.File) {
-    println("TODO")
+  def analyzeImage(image: java.io.File, config: Config) {
+    println("TODO", config)
   }
 
-  def analyzeVideo(video: java.io.File) {
+  def analyzeVideo(video: java.io.File, config: Config) {
     val source = Screen.fromVideo(video, fps = 24)
-    analyzeSource(source)
+    analyzeSource(source, config)
   }
 
   case class WithGrey(orig: IplImage, grey: IplImage)
