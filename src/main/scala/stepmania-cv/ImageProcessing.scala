@@ -1,5 +1,6 @@
 package stepmaniacv
 
+import org.bytedeco.javacpp.Loader
 import org.bytedeco.javacpp.helper.opencv_core.AbstractCvScalar
 import org.bytedeco.javacpp.opencv_core._
 import org.bytedeco.javacpp.opencv_imgproc._
@@ -54,5 +55,53 @@ object ImageProcessing {
     val x = box.center.x
     val y = box.center.y
     x > arrow.x && x < arrow.x2 && y > arrow.y && y < arrow.y2
+  }
+
+  def drawContours(img: IplImage): IplImage = {
+    val gray = MediaConversion.toGrayScale(img)
+    val bwImage = cvCreateImage(cvGetSize(gray), IPL_DEPTH_8U, 1)
+    cvThreshold(gray, bwImage, 64, 255, CV_THRESH_BINARY)
+    var contour = new CvSeq(null)
+    cvFindContours(bwImage, storage, contour)
+    while (contour != null && !contour.isNull) {
+      if (contour.elem_size() > 0) {
+        val points = cvApproxPoly(contour, Loader.sizeof(classOf[CvContour]), storage, CV_POLY_APPROX_DP, cvArcLength(contour) * 0.033, 0)
+        //val points = cvApproxPoly(contour, Loader.sizeof(classOf[CvContour]), storage, CV_POLY_APPROX_DP, cvContourPerimeter(contour) * 0.03, 0)
+        val total = points.total()
+        val area = cvContourArea(points)
+        if (total == 9 && area > 6000) {
+          val (minY, maxY) = getYRangeFromPoints(points)
+          val (minX, maxX) = getXRangeFromPoints(points)
+          if (minY < img.height / 2) {
+            println(s"Got points for contour: ${points.total()} - area = ${area} - minY = ${minY} - minX = $minX - maxY = $maxY - maxX = $maxX")
+            cvDrawContours(img, points, RedColor, RedColor, -1, -1, CV_AA, cvPoint(0,0))
+          }
+        }
+      }
+      contour = contour.h_next()
+    }
+    img
+  }
+
+  def getYRangeFromPoints(points: CvSeq): (Int, Int) = {
+    var minY = Int.MaxValue
+    var maxY = 0
+    for(i <- 0 until points.total) {
+      val point = new CvPoint(cvGetSeqElem(points, i))
+      if (point.y < minY) minY = point.y
+      if (point.y > maxY) maxY = point.y
+    }
+    minY -> maxY
+  }
+
+  def getXRangeFromPoints(points: CvSeq): (Int, Int) = {
+    var minX = Int.MaxValue
+    var maxX = 0
+    for(i <- 0 until points.total) {
+      val point = new CvPoint(cvGetSeqElem(points, i))
+      if (point.x < minX) minX = point.x
+      if (point.y > maxX) maxX = point.x
+    }
+    minX -> maxX
   }
 }

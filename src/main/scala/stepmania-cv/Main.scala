@@ -92,7 +92,13 @@ object Main {
   }
 
   def analyzeImage(image: java.io.File, config: Config) {
-    println("TODO", config)
+    val img = MediaConversion.toIplImage(image)
+    val canvas = new CanvasFrame(image.getPath, 1)
+    val withContours = ImageProcessing.drawContours(img)
+    canvas.setSize(img.width /2 , img.height /2)
+    canvas.setCanvasScale(0.5)
+    canvas.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE)
+    canvas.showImage(MediaConversion.toFrame(withContours))
   }
 
   def analyzeVideo(video: java.io.File, config: Config) {
