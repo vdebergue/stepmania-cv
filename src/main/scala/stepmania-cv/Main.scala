@@ -58,7 +58,15 @@ object Main {
       }
       // .map{ t => logBoxes(t._2); t }
       .map { case (img, boxes) =>
-        (img, boxes.filter(isBoxcontainedInArrow(config)))
+
+        val arrowsAndBoxes = boxes.flatMap(arrowContainingBox(config))
+        if (!arrowsAndBoxes.isEmpty) {
+          val arrows = arrowsAndBoxes.map { case (arrow, _) => arrow.name }.toSet
+          def a(name: String) = if (arrows(name)) name.toUpperCase else (" " * name.length)
+          println(s"""${a("left")}  ${a("down")}  ${a("up")}  ${a("right")}""")
+        }
+        val containedBoxes = arrowsAndBoxes.map { case (_, box) => box }
+        (img, containedBoxes)
       }
       .map { case (img, boxes) => ImageProcessing.drawBoxes(img, boxes); img }
       .map(MediaConversion.toFrame)
@@ -77,12 +85,18 @@ object Main {
     }
   }
 
-  def isBoxcontainedInArrow(config: Config)(box: CvBox2D): Boolean = {
-    config.liveArrows.exists { arrows =>
-      ImageProcessing.contains(box, arrows.arrow1) ||
-      ImageProcessing.contains(box, arrows.arrow2) ||
-      ImageProcessing.contains(box, arrows.arrow3) ||
-      ImageProcessing.contains(box, arrows.arrow4)
+  def arrowContainingBox(config: Config)(box: CvBox2D): Option[(Arrow, CvBox2D)] = {
+    def arrowIfContains(arrow: Arrow) = {
+      if (ImageProcessing.contains(box, arrow)) Some(arrow -> box)
+      else None
+    }
+    config.liveArrows.flatMap { arrows =>
+      Seq(
+        arrowIfContains(arrows.arrow1),
+        arrowIfContains(arrows.arrow2),
+        arrowIfContains(arrows.arrow3),
+        arrowIfContains(arrows.arrow4)
+      ).flatten.headOption
     }
   }
 
