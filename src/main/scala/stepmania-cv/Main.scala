@@ -55,7 +55,7 @@ object Main {
         val boxes = ImageProcessing.detectMotion(imgs(1).grey, imgs(0).grey)
         imgs(1) -> boxes.filter(b => b.size.width > 0 && b.size.height > 0)
       }
-      .map{ t => logBoxes(t._2); t }
+      // .map{ t => logBoxes(t._2); t }
       .map(t => ImageProcessing.drawBoxes(t._1.orig, t._2))
       .map(MediaConversion.toFrame)
       .map(displayImage)

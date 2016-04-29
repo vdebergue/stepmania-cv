@@ -38,6 +38,7 @@ object Screen {
   def fromVideo(file: java.io.File, fps: Int = 60): Source[Frame, _] = {
     val grabber = new FFmpegFrameGrabber(file)
     grabber.start()
+    println(s"Grabber gamma ${grabber.getGamma()}")
     Source.tick(0.second, 1.second / fps, "")
       .map { _ =>
         grabber.grab()
