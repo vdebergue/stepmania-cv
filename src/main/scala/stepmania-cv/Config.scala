@@ -5,6 +5,7 @@ import java.io.File
 case class Config(
   imageRaw: Option[String] = None,
   imageParsed: Option[Config.SourceWithArrows] = None,
+  imageFile: Option[File] = None,
   videoRaw: Option[String] = None,
   videoParsed: Option[Config.SourceWithArrows] = None,
   isLive: Boolean = false,
@@ -52,6 +53,13 @@ object Config {
 
     help("help")
 
+    cmd("analysis")
+      .children {
+        arg[File]("<image>")
+          .required()
+          .action { (x, c) => c.copy(imageFile = Some(x)) }
+      }
+
     cmd("live")
       .text("start a live analysis of the screen")
       .action { (_, c) => c.copy(isLive = true) }
@@ -69,12 +77,12 @@ object Config {
           .text("""Input device to capture - format depends on format. cf ffmpeg.
             |        Use "0" or "1" on OSX
           """.stripMargin)
-          .required()
+          // .required()
           .action{ (x, c) => c.copy(captureDevice = Some(x)) }
 
         opt[String]('a', "arrows")
           .text("x1,y1,w1,h1;x2,y2,w2,h2;x3,y3,w3,h3;x4,y4,w4,h4")
-          .required()
+          .optional()
           .action{ (x, c) => c.copy(liveArrows = parseArrows(x)) }
       }
 
@@ -98,8 +106,7 @@ object Config {
 
     checkConfig { c =>
       if (c.isLive) {
-        if (c.liveArrows.isDefined) success
-        else failure("Invalid arrows format: valid is x1,y1,w1,h1;x2,y2,w2,h2;x3,y3,w3,h3;x4,y4,w4,h4")
+        success
       }
       else if (c.imageRaw.isDefined && c.videoRaw.isEmpty) {
         if (c.image.isDefined) success
@@ -108,6 +115,9 @@ object Config {
       else if (c.imageRaw.isEmpty && c.videoRaw.isDefined) {
         if (c.video.isDefined) success
         else failure("Invalid video format: valid is path:x1,y1,w1,h1;x2,y2,w2,h2;x3,y3,w3,h3;x4,y4,w4,h4")
+      }
+      else if (c.imageFile.isDefined) {
+        success
       }
       else failure("You must define either a live capture or from an image or a video")
     }

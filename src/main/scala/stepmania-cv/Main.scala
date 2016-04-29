@@ -13,6 +13,8 @@ object Main {
 
     if (config.isLive) {
       startLive(config)
+    } else if (config.imageFile.isDefined) {
+      analyzeImage(config.imageFile.get, config)
     } else if (config.image.isDefined) {
       analyzeImage(config.image.get, config)
     } else if (config.video.isDefined) {
@@ -39,13 +41,26 @@ object Main {
     }
     val ratePrint = 2.seconds
 
+    var arrows = config.liveArrows
+
+    def detectArrows(img: IplImage): IplImage = {
+      if (arrows.isEmpty) {
+        val (_,  detectedArrows) = ImageProcessing.detectArrows(img, drawArrows = false)
+        if (detectedArrows.length == 4) {
+          arrows = Some(Config.Arrows(detectedArrows(0), detectedArrows(1), detectedArrows(2), detectedArrows(3)))
+        }
+      }
+      img
+    }
+
     val graph = source
       // .map(logFrame)
       .via(RateMonitor.asFlow[Frame](ratePrint, "grab"))
       // .map(displayImage)
       .via(RateMonitor.asFlow[Frame](ratePrint, "display"))
       .map(MediaConversion.toIplImage)
-      .map { t => drawArrowBoxes(config, t); t }
+      .map(detectArrows)
+      .map { t => drawArrowBoxes(arrows, t); t }
       // .map(logMat)
       // .map(logImage)
       .via(RateMonitor.asFlow[IplImage](ratePrint, "converted"))
@@ -58,12 +73,13 @@ object Main {
       }
       // .map{ t => logBoxes(t._2); t }
       .map { case (img, boxes) =>
-
-        val arrowsAndBoxes = boxes.flatMap(arrowContainingBox(config))
+        val arrowsAndBoxes = boxes.flatMap(arrowContainingBox(arrows))
         if (!arrowsAndBoxes.isEmpty) {
           val arrows = arrowsAndBoxes.map { case (arrow, _) => arrow.name }.toSet
           def a(name: String) = if (arrows(name)) name.toUpperCase else (" " * name.length)
           println(s"""${a("left")}  ${a("down")}  ${a("up")}  ${a("right")}""")
+        } else {
+          println("")
         }
         val containedBoxes = arrowsAndBoxes.map { case (_, box) => box }
         (img, containedBoxes)
@@ -76,8 +92,8 @@ object Main {
     graph.run()
   }
 
-  def drawArrowBoxes(config: Config, img: IplImage): Unit = {
-    config.liveArrows.foreach { arrows =>
+  def drawArrowBoxes(liveArrows: Option[Config.Arrows], img: IplImage): Unit = {
+    liveArrows.foreach { arrows =>
       ImageProcessing.drawRectangles(img, arrows.arrow1)
       ImageProcessing.drawRectangles(img, arrows.arrow2)
       ImageProcessing.drawRectangles(img, arrows.arrow3)
@@ -85,12 +101,12 @@ object Main {
     }
   }
 
-  def arrowContainingBox(config: Config)(box: CvBox2D): Option[(Arrow, CvBox2D)] = {
+  def arrowContainingBox(liveArrows: Option[Config.Arrows])(box: CvBox2D): Option[(Arrow, CvBox2D)] = {
     def arrowIfContains(arrow: Arrow) = {
       if (ImageProcessing.contains(box, arrow)) Some(arrow -> box)
       else None
     }
-    config.liveArrows.flatMap { arrows =>
+    liveArrows.flatMap { arrows =>
       Seq(
         arrowIfContains(arrows.arrow1),
         arrowIfContains(arrows.arrow2),
@@ -108,7 +124,8 @@ object Main {
   def analyzeImage(image: java.io.File, config: Config) {
     val img = MediaConversion.toIplImage(image)
     val canvas = new CanvasFrame(image.getPath, 1)
-    val withContours = ImageProcessing.drawContours(img)
+    val (withContours, arrows) = ImageProcessing.detectArrows(img)
+    println(s"Arrows = $arrows")
     canvas.setSize(img.width /2 , img.height /2)
     canvas.setCanvasScale(0.5)
     canvas.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE)

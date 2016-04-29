@@ -27,8 +27,8 @@ object Screen {
   def buildGrabber(deviceId: String, format: String, dim: Dimensions = Dimensions.sd): FrameGrabber = {
     val g = FFmpegFrameGrabber.createDefault(deviceId)
     g.setFormat(format)
-    g.setImageWidth(dim.width)
-    g.setImageHeight(dim.height)
+    // g.setImageWidth(dim.width)
+    // g.setImageHeight(dim.height)
     g.setFrameRate(100)
     g.start()
     println(s"Grabber gamma ${g.getGamma()}")
